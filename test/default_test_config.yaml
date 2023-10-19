@@ -1,0 +1,14 @@
+# for 4D point cloud dataset
+path_dataset: "/media/fractal/T7/datasets/icl-nuim-pclds"
+dataset: "lounge"
+frames: [100, 300]
+
+# for 2D dataset
+n_samples: 1000
+n_components: 4
+
+# GBMS
+bandwidth: 0.02
+
+# General
+show_plots: False

@@ -99,8 +99,8 @@ public:
   // The boolean gt is set to true for model evaluation. Otherwise it is kept false.
   std::pair<Eigen::MatrixXf, std::vector<size_t>> to_2d_dim(const Eigen::MatrixXf& in, size_t dim, bool gt)
   {
-    Eigen::MatrixXf ret = Eigen::MatrixXf::Constant(im_h_, im_w_, static_cast<float>(NAN));
-    Eigen::MatrixXf depth_im = Eigen::MatrixXf::Constant(im_h_, im_w_, static_cast<float>(NAN));
+    Eigen::MatrixXf ret = Eigen::MatrixXf::Constant(im_h_, im_w_, static_cast<float>(-1.0));
+    Eigen::MatrixXf depth_im = Eigen::MatrixXf::Constant(im_h_, im_w_, static_cast<float>(-1.0));
 
     std::vector<size_t> invalid_indices;
 
@@ -116,7 +116,7 @@ public:
 
       if (u >= 0 && u < im_w_ && v >= 0 && v < im_h_)
       {
-        if (isnan(ret(v, u)) || isnan(depth_im(v, u)))
+        if (ret(v, u) < 0.0 || depth_im(v, u) < 0.0)
         {
           ret(v, u) = in(i, dim);
           depth_im(v, u) = in(i, 2);

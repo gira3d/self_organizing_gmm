@@ -1,0 +1,7 @@
+{
+  "name": "self_organizing_gmm",
+  "dependencies": {
+    "pybind11",
+    "nanoflann_colcon"
+  }
+}

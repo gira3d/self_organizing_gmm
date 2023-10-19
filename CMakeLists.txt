@@ -6,8 +6,7 @@ project(self_organizing_gmm
 	"PRI Mapping"
 	LANGUAGES CXX C)
 
-find_package(GSL REQUIRED)
-
+# configuration
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -31,22 +30,24 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   set(FILE_SYS_LIB "")
 endif()
 
+# find dependencies
 find_package(OpenMP REQUIRED)
 find_package(pybind11 REQUIRED)
 find_package(Eigen3 3.4 REQUIRED)
+find_package(GSL REQUIRED)
+find_package(nanoflann REQUIRED)
 
-include(FetchContent)
-
-message(STATUS "Cloning and configuring nanoflann v1.4.1")
-FetchContent_Declare(
-  nanoflann
-  GIT_REPOSITORY https://github.com/jlblancoc/nanoflann.git
-  GIT_TAG v1.4.1
-  GIT_SHALLOW TRUE
-  GIT_PROGRESS TRUE)
-set(NANOFLANN_BUILD_EXAMPLES OFF)
-set(NANOFLANN_BUILD_TESTS OFF)
-FetchContent_MakeAvailable(nanoflann)
+# Setup pybind modules
+pybind11_add_module(time_profiler_py src/pybind/time_profiler_py.cpp)
+target_include_directories(time_profiler_py
+  PRIVATE
+  include
+)
+target_link_libraries(
+  time_profiler_py
+  PRIVATE stdc++fs
+)
+set_target_properties(time_profiler_py PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_INSTALL_PREFIX})
 
 pybind11_add_module(mean_shift_py src/pybind/mean_shift_py.cpp)
 target_include_directories(mean_shift_py PRIVATE include)
@@ -88,6 +89,19 @@ target_link_libraries(
 )
 set_target_properties(kinit_py PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_INSTALL_PREFIX})
 
+pybind11_add_module(sogmm_cpu src/pybind/sogmm_cpu.cpp)
+target_include_directories(sogmm_cpu PRIVATE include ${GSL_INCLUDE_DIRS})
+target_link_libraries(
+  sogmm_cpu
+  PRIVATE ${FILE_SYS_LIB}
+  PRIVATE Eigen3::Eigen
+  PRIVATE ${GSL_LIBRARIES}
+  PRIVATE ${OpenMP_libomp_LIBRARY}
+  PRIVATE nanoflann::nanoflann
+)
+set_target_properties(sogmm_cpu PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_INSTALL_PREFIX})
+
+# Install
 install(TARGETS DESTINATION ${CMAKE_INSTALL_PREFIX})
 
 install(DIRECTORY include/${PROJECT_NAME}/

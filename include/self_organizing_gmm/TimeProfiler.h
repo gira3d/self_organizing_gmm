@@ -34,7 +34,7 @@ public:
 
     double duration()
     {
-      if (stop && start)  // checks if variables were set via tic/toc
+      if (stop && start) // checks if variables were set via tic/toc
       {
         durations.push_back(
             (std::chrono::duration<double>(*stop - *start)).count());
@@ -67,9 +67,10 @@ public:
         stddev += std::pow(durations[i] - mean(), 2);
       }
 
-      if (nCalls() <= 1) return 0;
+      if (nCalls() <= 1)
+        return 0;
 
-      return sqrt( stddev / (nCalls()-1) );
+      return sqrt(stddev / (nCalls() - 1));
     }
 
     double nCalls()
@@ -77,7 +78,7 @@ public:
       return durations.size();
     }
 
-    void printTimingStatistics(const Key& k)
+    void printTimingStatistics(const Key &k)
     {
       std::cout << "Statistics for " << k << ":" << std::endl;
       std::cout << "\t"
@@ -106,7 +107,7 @@ public:
     // Open file for writing
     std::ofstream ofs(path_);
     ofs << "Key,Sum,Calls,Mean,StdDev\n";
-    for (auto const& pair : timers_)
+    for (auto const &pair : timers_)
     {
       Key k = pair.first;
       Value v = pair.second;
@@ -117,7 +118,7 @@ public:
     ofs.close();
   }
 
-  void tic(const Key& key)
+  void tic(const Key &key)
   {
     if (!exists(key))
     {
@@ -130,7 +131,7 @@ public:
             std::chrono::high_resolution_clock::now());
   }
 
-  double toc(const Key& key)
+  double toc(const Key &key)
   {
     if (!exists(key))
     {
@@ -143,9 +144,9 @@ public:
     return timers_[key].duration();
   }
 
-  bool save(const std::string& directory, const std::string& filename)
+  bool save(const std::string &directory, const std::string &filename)
   {
-    path_ = std::filesystem::path{ directory };
+    path_ = std::filesystem::path{directory};
     if (!std::filesystem::is_directory(path_))
     {
       std::filesystem::create_directory(path_);
@@ -163,13 +164,13 @@ private:
     timers_.clear();
   }
 
-  void addTimer(const Key& key)
+  void addTimer(const Key &key)
   {
     Value v;
     timers_.insert(std::make_pair(key, v));
   }
 
-  bool exists(const Key& key) const
+  bool exists(const Key &key) const
   {
     return !(timers_.find(key) == timers_.end());
   }
