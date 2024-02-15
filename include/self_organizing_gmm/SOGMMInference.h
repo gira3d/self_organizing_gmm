@@ -5,7 +5,7 @@
 #include <iostream>
 
 #include <Eigen/Dense>
-#include <gsl/gsl_randist.h>
+#include <EigenRand/EigenRand>
 
 #include <self_organizing_gmm/SOGMMCPU.h>
 #include <self_organizing_gmm/EM.h>
@@ -40,14 +40,12 @@ namespace sogmm
       using Matrix = typename Container<4>::Matrix;
 
       // for Box-Muller sampling
-      gsl_rng *r_global_;
       std::default_random_engine generator_;
       std::normal_distribution<T> normal_dist_;
+      Eigen::Rand::P8_mt19937_64 urng_{42};
 
       SOGMMInference()
       {
-        gsl_rng_env_setup();
-        r_global_ = gsl_rng_alloc(gsl_rng_default);
         normal_dist_ =
             std::normal_distribution<T>(static_cast<T>(0.0), static_cast<T>(1.0));
       }
@@ -60,18 +58,8 @@ namespace sogmm
       {
         unsigned int K = sogmm.n_components_;
 
-        unsigned int n_samples_comp[K];
-
-        // gsl ran multinomial only uses double datatype
-        // convert the datatype of the weights vector to double
-        double probs[K];
-        for (unsigned int i = 0; i < K; i++)
-        {
-          probs[i] = static_cast<double>(sogmm.weights_(i));
-        }
-
-        gsl_ran_multinomial(r_global_, static_cast<size_t>(K),
-                            N, probs, n_samples_comp);
+        Eigen::Rand::MultinomialGen mgen(static_cast<int32_t>(N), sogmm.weights_);
+        auto buckets = mgen.generate(urng_, 1);
 
         // prepare the samples matrix
         std::vector<T> x;
@@ -100,14 +88,14 @@ namespace sogmm
 #pragma omp parallel
           {
 #pragma omp for
-            for (unsigned int n = 0; n < n_samples_comp[k]; n++)
+            for (unsigned int n = 0; n < buckets(k); n++)
             {
               VectorD<D> z = samples.row(prev_idx + n);
               VectorD<D> Lz = L * z;
               samples.row(prev_idx + n) = Lz + mean;
             }
           }
-          prev_idx += n_samples_comp[k];
+          prev_idx += buckets(k);
         }
       }
 
@@ -118,8 +106,6 @@ namespace sogmm
                              Vector &expected_values)
       {
         unsigned int K = sogmm.n_components_;
-
-        unsigned int n_samples_comp[K];
 
         Matrix ws = Matrix::Zero(N, K);
         Matrix ms = Matrix::Zero(N, K);
@@ -147,16 +133,8 @@ namespace sogmm
         MatrixDD<3> Linv = MatrixDD<3>::Zero(3, 3);
         T cov_det, norm_factor;
 
-        // gsl ran multinomial only uses double datatype
-        // convert the datatype of the weights vector to double
-        double probs[K];
-        for (unsigned int i = 0; i < K; i++)
-        {
-          probs[i] = static_cast<double>(sogmm3.weights_(i));
-        }
-
-        gsl_ran_multinomial(r_global_, static_cast<size_t>(K),
-                            N, probs, n_samples_comp);
+        Eigen::Rand::MultinomialGen mgen(static_cast<int32_t>(N), sogmm.weights_);
+        auto buckets = mgen.generate(urng_, 1);
 
         // prepare the samples matrix
         std::vector<T> x;
@@ -185,7 +163,7 @@ namespace sogmm
 #pragma omp parallel
           {
 #pragma omp for
-            for (unsigned int n = 0; n < n_samples_comp[k]; n++)
+            for (unsigned int n = 0; n < buckets(k); n++)
             {
               VectorD<3> z = samples.row(prev_idx + n);
               VectorD<3> Lz = L * z;
@@ -194,16 +172,16 @@ namespace sogmm
           }
 
           std::vector<int> indices;
-          for (unsigned int n = 0; n < n_samples_comp[k]; n++)
+          for (unsigned int n = 0; n < buckets(k); n++)
           {
             indices.push_back(prev_idx + n);
           }
 
           MatrixXD<3> X = samples(indices, Eigen::all);
-          MatrixDX<3> dev = MatrixDX<3>::Zero(3, n_samples_comp[k]);
+          MatrixDX<3> dev = MatrixDX<3>::Zero(3, buckets(k));
           // y = L^{-1} (X - µ)^T
-          MatrixDX<3> y = MatrixDX<3>::Zero(3, n_samples_comp[k]);
-          Vector temp = Vector::Zero(n_samples_comp[k]);
+          MatrixDX<3> y = MatrixDX<3>::Zero(3, buckets(k));
+          Vector temp = Vector::Zero(buckets(k));
 
           // parts of the mean vector
           mu_kX = sogmm.means_(k, {0, 1, 2});
@@ -244,7 +222,7 @@ namespace sogmm
 
           ms(indices, k) = ((sigma_kliX_kXX_inv.transpose() * dev).array() + mu_kli).transpose();
 
-          prev_idx += n_samples_comp[k];
+          prev_idx += buckets(k);
         }
 
         // clamp ws to zero

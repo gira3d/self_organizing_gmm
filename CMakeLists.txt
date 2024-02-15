@@ -34,8 +34,15 @@ endif()
 find_package(OpenMP REQUIRED)
 find_package(pybind11 REQUIRED)
 find_package(Eigen3 3.4 REQUIRED)
-find_package(GSL REQUIRED)
 find_package(nanoflann REQUIRED)
+
+include(FetchContent)
+FetchContent_Declare(
+  EigenRand
+  GIT_REPOSITORY https://github.com/bab2min/EigenRand.git
+  GIT_TAG        main
+)
+FetchContent_MakeAvailable(EigenRand)
 
 # Setup pybind modules
 pybind11_add_module(time_profiler_py src/pybind/time_profiler_py.cpp)
@@ -69,12 +76,11 @@ target_link_libraries(
 set_target_properties(camera_model_py PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_INSTALL_PREFIX})
 
 pybind11_add_module(gmm_py src/pybind/gmm_py.cpp)
-target_include_directories(gmm_py PRIVATE include ${GSL_INCLUDE_DIRS})
+target_include_directories(gmm_py PRIVATE include ${EigenRand_SOURCE_DIR})
 target_link_libraries(
   gmm_py
   PRIVATE ${FILE_SYS_LIB}
   PRIVATE Eigen3::Eigen
-  PRIVATE ${GSL_LIBRARIES}
   PRIVATE ${OpenMP_libomp_LIBRARY}
 )
 set_target_properties(gmm_py PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_INSTALL_PREFIX})
@@ -90,12 +96,11 @@ target_link_libraries(
 set_target_properties(kinit_py PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_INSTALL_PREFIX})
 
 pybind11_add_module(sogmm_cpu src/pybind/sogmm_cpu.cpp)
-target_include_directories(sogmm_cpu PRIVATE include ${GSL_INCLUDE_DIRS})
+target_include_directories(sogmm_cpu PRIVATE include ${EigenRand_SOURCE_DIR})
 target_link_libraries(
   sogmm_cpu
   PRIVATE ${FILE_SYS_LIB}
   PRIVATE Eigen3::Eigen
-  PRIVATE ${GSL_LIBRARIES}
   PRIVATE ${OpenMP_libomp_LIBRARY}
   PRIVATE nanoflann::nanoflann
 )

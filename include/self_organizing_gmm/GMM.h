@@ -5,7 +5,7 @@
 #include <random>
 
 #include <Eigen/Dense>
-#include <gsl/gsl_randist.h>
+#include <EigenRand/EigenRand>
 
 #define DBG_MACRO_NO_WARNING
 #define DBG_MACRO_DISABLE
@@ -94,8 +94,6 @@ public:
     covariances_ = MatrixXC::Zero(n_components_, C);
     covariances_cholesky_ = MatrixXC::Zero(n_components_, C);
 
-    gsl_rng_env_setup();
-    r_global_ = gsl_rng_alloc(gsl_rng_default);
     normal_dist_ =
         std::normal_distribution<T>(static_cast<T>(0.0), static_cast<T>(1.0));
   }
@@ -328,18 +326,8 @@ public:
   // Box-Muller method sampling of Gaussian distributions
   inline MatrixXD sample(const unsigned int& n_samples, double sigma = 3.0)
   {
-    unsigned int n_samples_comp[n_components_];
-
-    // gsl ran multinomial only uses double datatype
-    // convert the datatype of the weights vector to double
-    double probs[n_components_];
-    for (unsigned int i = 0; i < n_components_; i++)
-    {
-      probs[i] = static_cast<double>(weights_(i));
-    }
-
-    gsl_ran_multinomial(r_global_, static_cast<size_t>(n_components_),
-                        n_samples, probs, n_samples_comp);
+    Eigen::Rand::MultinomialGen mgen(static_cast<int32_t>(n_samples), weights_);
+    auto buckets = mgen.generate(urng_, 1);
 
     // prepare the samples matrix
     std::vector<T> x;
@@ -368,14 +356,14 @@ public:
 #pragma omp parallel
       {
 #pragma omp for
-        for (unsigned int n = 0; n < n_samples_comp[k]; n++)
+        for (unsigned int n = 0; n < buckets(k); n++)
         {
           VectorD z = samples.row(prev_idx + n);
           VectorD Lz = L * z;
           samples.row(prev_idx + n) = Lz + mean;
         }
       }
-      prev_idx += n_samples_comp[k];
+      prev_idx += buckets(k);
     }
 
     return samples;
@@ -547,10 +535,10 @@ public:
   unsigned int max_iter_;
 
   // for Box-Muller sampling
-  gsl_rng* r_global_;
   MatrixXC covariances_cholesky_;
   std::default_random_engine generator_;
   std::normal_distribution<T> normal_dist_;
+  Eigen::Rand::P8_mt19937_64 urng_{42};
 
   // for python bindings/debugging
   Matrix resp_;
